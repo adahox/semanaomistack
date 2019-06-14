@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-
+import io from 'socket.io-client';
 import './Feed.css';
 import api from '../services/api';
 
@@ -17,9 +17,35 @@ class Feed extends Component {
 
     async componentDidMount()
     {
+        this.registerToSocket();
+
         const response = await api.get('posts');
 
         this.setState({feed: response.data});
+    }
+
+    handleLike = id => {
+        api.post(`/posts/${id}/like`);
+    }
+
+    registerToSocket = () => {
+        const socket = io('http://localhost:3333');
+
+        //post like
+
+        socket.on('post', newPost => {
+            this.setState({
+                feed:[newPost, ...this.state.feed]
+            });
+        });
+
+        socket.on('like', likedPost => {
+            this.setState({
+                feed: this.state.feed.map(post => 
+                    post._id === likedPost._id ? likedPost : post
+                )
+            });
+        });
     }
 
     render()
@@ -27,7 +53,7 @@ class Feed extends Component {
         return (
            <section id="post-list">
                {this.state.feed.map(post => (
-               <article>
+               <article key={post._id}>
                <header>
                    <div className="user-info">
                        <span>{post.author}</span>
@@ -36,13 +62,16 @@ class Feed extends Component {
                    <img src={more} alt="Mais" />
                </header>
 
-                <img src={`http://localhost:3333/files/${post.image}`} />
+                <img src={`http://localhost:3333/files/${post.image}`} alt=""/>
 
                 <footer>
                     <div className="actions">
-                        <img src={like} alt="" />
-                        <img src={comment} alt="" />
-                        <img src={send} alt="" />
+                        <button>
+                            <img src={like} alt="like button" onClick={ () => this.handleLike(post._id) }/>
+                        </button>
+                        
+                        <img src={comment} alt="comment button" />
+                        <img src={send} alt="send button" />
                     </div>
                     
                     <strong>{post.likes} curtidas</strong>
